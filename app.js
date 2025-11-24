@@ -1,13 +1,14 @@
-// CONFIGURATION
-const REPO_BASE = window.location.href.substring(0, window.location.href.lastIndexOf('/')) + "/";
-const SCALE = 14; // Pixels per inch (Matches CSS background-size)
-const BOARD_W_HOLES = 48; // 4ft section standard
-const BOARD_H_HOLES = 72; // 6ft high standard (Adjusts dynamically)
+// --- CONFIGURATION ---
+// Screen Logic: 16 pixels = 1 inch on the pegboard
+const PPI = 16; 
+// Board Dimensions in holes (inches)
+const BOARD_W_HOLES = 46; 
+const BOARD_H_HOLES = 64;
 
-// GLOBAL STATE
-let fileIndex = [];
-let pogData = [];
-let storeMap = [];
+// --- GLOBAL STATE ---
+let fileIndex = []; // List of all images/PDFs in repo
+let pogData = [];   // Product data
+let storeMap = [];  // Store mapping
 let currentStore = null;
 let currentPOG = null;
 let currentBay = null;
@@ -21,11 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function init() {
     try {
-        // 1. Fetch Data
+        // 1. Load all CSV data from Repo
         await loadCSVData();
         document.getElementById('loading-overlay').classList.add('hidden');
 
-        // 2. Check for saved session
+        // 2. Check for existing session
         const savedStore = localStorage.getItem('harpa_store');
         if (savedStore) {
             loadStoreLogic(savedStore);
@@ -33,10 +34,10 @@ async function init() {
             document.getElementById('store-modal').classList.remove('hidden');
         }
     } catch (error) {
-        alert("Error loading data. Ensure CSV files are in the repo root.\n" + error.message);
+        alert("Error loading data: " + error.message);
     }
 
-    // 3. Bind Event Listeners
+    // 3. Event Listeners
     document.getElementById('btn-load-store').addEventListener('click', () => {
         const val = document.getElementById('store-input').value.trim();
         if (val) loadStoreLogic(val);
@@ -46,15 +47,16 @@ async function init() {
     document.getElementById('search-input').addEventListener('input', handleSearch);
 }
 
-// --- DATA LOADING ---
+// --- DATA FETCHING ---
 async function loadCSVData() {
+    const ts = new Date().getTime(); // Cache busting
     const [filesReq, pogReq, mapReq] = await Promise.all([
-        fetch('githubfiles.csv'),
-        fetch('allplanogramdata.csv'),
-        fetch('Store_POG_Mapping.csv')
+        fetch(`githubfiles.csv?t=${ts}`),
+        fetch(`allplanogramdata.csv?t=${ts}`),
+        fetch(`Store_POG_Mapping.csv?t=${ts}`)
     ]);
 
-    if (!filesReq.ok || !pogReq.ok || !mapReq.ok) throw new Error("Failed to fetch CSV files");
+    if (!filesReq.ok || !pogReq.ok || !mapReq.ok) throw new Error("Failed to fetch data files. Check repo.");
 
     const filesText = await filesReq.text();
     const pogText = await pogReq.text();
@@ -71,7 +73,7 @@ function parseCSV(text) {
     const result = [];
 
     for (let i = 1; i < lines.length; i++) {
-        // Handle commas inside quotes? Simple split for now based on your data
+        // Simple comma split (assuming no commas in description fields for simplicity)
         const row = lines[i].split(',');
         if (row.length < headers.length) continue;
 
@@ -86,7 +88,6 @@ function parseCSV(text) {
 
 // --- STORE LOGIC ---
 function loadStoreLogic(storeNum) {
-    // Find POG for Store
     const mapping = storeMap.find(s => s.Store === storeNum);
     
     if (!mapping) {
@@ -115,7 +116,7 @@ function resetStore() {
 
 // --- NAVIGATION ---
 function renderBayNavigation() {
-    // Filter POG Data for current POG
+    // Filter items belonging to this POG
     const currentItems = pogData.filter(i => i.POG === currentPOG);
     
     if (currentItems.length === 0) {
@@ -123,8 +124,7 @@ function renderBayNavigation() {
         return;
     }
 
-    // Extract unique bays
-    // Convert to numbers for sorting, then back to string if needed
+    // Find unique bays
     const bays = [...new Set(currentItems.map(i => parseInt(i.Bay)))].sort((a, b) => a - b);
 
     const container = document.getElementById('bay-nav');
@@ -137,89 +137,85 @@ function renderBayNavigation() {
         btn.onclick = () => loadBay(bay);
         container.appendChild(btn);
 
-        // Auto-load first bay
         if (index === 0) loadBay(bay);
     });
 }
 
 function loadBay(bayNum) {
     currentBay = bayNum;
-
-    // Update Buttons
     document.querySelectorAll('.bay-btn').forEach(btn => {
         btn.classList.toggle('active', btn.innerText === `Bay ${bayNum}`);
     });
-
     renderGrid(bayNum);
 }
 
-// --- GRID RENDERING (THE FROG BOARD) ---
+// --- BOARD RENDERING (The Frog) ---
 function renderGrid(bayNum) {
     const container = document.getElementById('grid-view-container');
     container.innerHTML = '';
 
-    // Get items for this bay
+    // 1. Setup Dimensions
+    const boardWidthPx = BOARD_W_HOLES * PPI;
+    const boardHeightPx = BOARD_H_HOLES * PPI;
+
+    container.style.width = `${boardWidthPx}px`;
+    container.style.height = `${boardHeightPx}px`;
+
+    // 2. Get Items
     const items = pogData.filter(i => i.POG === currentPOG && parseInt(i.Bay) === bayNum);
-    
-    if (items.length === 0) {
-        container.innerHTML = '<div style="padding:20px; color:white;">No items in this bay.</div>';
-        return;
-    }
-
-    // Dynamic Board Height based on lowest product
-    let maxRow = 72;
-    items.forEach(i => {
-        const r = getCoords(i.Peg).r;
-        if (r > maxRow) maxRow = r;
-    });
-    const boardHeightPixels = (maxRow + 10) * SCALE; // Buffer
-    const boardWidthPixels = BOARD_W_HOLES * SCALE; // 46 holes wide approx 4ft
-
-    container.style.width = `${boardWidthPixels}px`;
-    container.style.height = `${boardHeightPixels}px`;
-
     let completeCount = 0;
 
     items.forEach(item => {
         const { r, c } = getCoords(item.Peg);
-        // Parse dimensions (remove ' in')
+        // Parse H/W (remove ' in')
         const h = parseFloat(item.Height.replace(' in', '')) || 6;
         const w = parseFloat(item.Width.replace(' in', '')) || 3;
 
-        // Calculate Pixels
-        const widthPx = w * SCALE;
-        const heightPx = h * SCALE;
+        // --- COORDINATE MATH (The Frog Logic) ---
+        // r = Row Hole (1-64) from Top
+        // c = Col Hole (1-46) from Left
+        // PPI = Pixels Per Inch (16)
+        // Holes are 1 inch apart.
         
-        // Position: 
-        // R/C from CSV corresponds to the HOLE index (1-based).
-        // Frog (Red Dot) is at (C, R).
-        // Product hangs from Frog. We center Product horizontally on Frog.
-        const topPx = (r - 1) * SCALE; 
-        const leftPx = ((c - 1) * SCALE) - (widthPx / 2) + (SCALE / 2);
+        // FROG LEFT LEG: Goes into (c, r)
+        const frogX = (c - 1) * PPI; 
+        const frogY = (r - 1) * PPI;
 
-        // Create Frog
+        // Draw Frog (Red Dot) - centered on the hole
         const frog = document.createElement('div');
         frog.className = 'frog-dot';
-        frog.style.top = `${(r - 1) * SCALE + (SCALE/2)}px`;
-        frog.style.left = `${(c - 1) * SCALE + (SCALE/2)}px`;
+        frog.style.left = `${frogX + (PPI/2)}px`; 
+        frog.style.top = `${frogY + (PPI/2)}px`;
         container.appendChild(frog);
 
-        // Create Product
+        // PRODUCT BOX:
+        // The frog spans 2 holes (C and C+1).
+        // The product hangs centered between these two holes.
+        // Center X = frogX + (0.5 inch converted to pixels)
+        const centerXPx = frogX + (PPI / 2);
+        
+        // Product Left = CenterX - (ProductWidth / 2)
+        const boxLeft = centerXPx - ((w * PPI) / 2);
+        // Product Top = frogY + (0.5 inch down for hang)
+        const boxTop = frogY + (PPI / 2);
+
         const box = document.createElement('div');
         box.className = 'product-box';
-        box.style.width = `${widthPx}px`;
-        box.style.height = `${heightPx}px`;
-        box.style.top = `${topPx}px`;
-        box.style.left = `${leftPx}px`;
-        box.dataset.upc = item.UPC;
-        box.dataset.desc = item.ProductDescription;
+        box.style.width = `${w * PPI}px`;
+        box.style.height = `${h * PPI}px`;
+        box.style.left = `${boxLeft}px`;
+        box.style.top = `${boxTop}px`;
+        
+        // Metadata
+        box.dataset.upc = normalizeUPC(item.UPC);
+        box.dataset.desc = item.ProductDescription.toLowerCase();
 
-        if (completedItems.has(item.UPC)) {
+        if (completedItems.has(normalizeUPC(item.UPC))) {
             box.classList.add('completed');
             completeCount++;
         }
 
-        // Image
+        // Image matching (Startswith UPC)
         const imgName = fileIndex.find(f => f.startsWith(item.UPC));
         if (imgName) {
             const img = document.createElement('img');
@@ -227,30 +223,25 @@ function renderGrid(bayNum) {
             img.loading = "lazy";
             box.appendChild(img);
         } else {
-            box.innerHTML = `<span style="font-size:10px; text-align:center; padding:2px;">${item.UPC}<br>${item.ProductDescription}</span>`;
+            box.innerHTML = `<span style="font-size:10px; text-align:center; padding:2px;">${item.UPC}</span>`;
         }
 
-        // Click Event
-        box.onclick = () => toggleComplete(item.UPC, box);
-
+        box.onclick = () => toggleComplete(normalizeUPC(item.UPC), box);
         container.appendChild(box);
     });
 
-    // Update Progress Bar
     updateProgress(completeCount, items.length);
 }
 
 function getCoords(pegStr) {
-    // Format "R02 C03"
+    // "R02 C03" -> Row 2, Col 3
     if (!pegStr) return { r: 1, c: 1 };
     const match = pegStr.match(/R(\d+)\s*C(\d+)/);
-    if (match) {
-        return { r: parseInt(match[1]), c: parseInt(match[2]) };
-    }
+    if (match) return { r: parseInt(match[1]), c: parseInt(match[2]) };
     return { r: 1, c: 1 };
 }
 
-// --- LOGIC & UTILS ---
+// --- INTERACTION ---
 function toggleComplete(upc, el) {
     if (completedItems.has(upc)) {
         completedItems.delete(upc);
@@ -261,10 +252,10 @@ function toggleComplete(upc, el) {
     }
     localStorage.setItem('harpa_complete', JSON.stringify([...completedItems]));
     
-    // Recalculate progress
-    const total = pogData.filter(i => i.POG === currentPOG && parseInt(i.Bay) === currentBay).length;
-    const done = pogData.filter(i => i.POG === currentPOG && parseInt(i.Bay) === currentBay && completedItems.has(i.UPC)).length;
-    updateProgress(done, total);
+    // Update progress math
+    const items = pogData.filter(i => i.POG === currentPOG && parseInt(i.Bay) === currentBay);
+    const done = items.filter(i => completedItems.has(normalizeUPC(i.UPC))).length;
+    updateProgress(done, items.length);
 }
 
 function updateProgress(done, total) {
@@ -278,7 +269,13 @@ function loadProgress() {
     if(saved) completedItems = new Set(JSON.parse(saved));
 }
 
-// --- SCANNER ---
+// --- SCANNER & SEARCH ---
+function normalizeUPC(upc) {
+    if(!upc) return "";
+    // Remove leading zeros to ensure matches (e.g. 00414... becomes 414...)
+    return upc.toString().replace(/^0+/, '');
+}
+
 function startScanner() {
     const modal = document.getElementById('scanner-modal');
     modal.classList.remove('hidden');
@@ -288,15 +285,12 @@ function startScanner() {
         { facingMode: "environment" }, 
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-            // Success
             stopScanner();
             handleScanMatch(decodedText);
         },
-        (errorMessage) => {
-            // scanning...
-        }
+        (errorMessage) => {}
     ).catch(err => {
-        alert("Camera failed to start. Ensure you are on HTTPS and allowed camera access.");
+        alert("Camera Error: Ensure HTTPS is enabled and camera permissions granted.");
         modal.classList.add('hidden');
     });
 }
@@ -306,37 +300,66 @@ function stopScanner() {
         html5QrCode.stop().then(() => {
             document.getElementById('scanner-modal').classList.add('hidden');
             html5QrCode.clear();
-        }).catch(err => console.log(err));
+        });
     } else {
         document.getElementById('scanner-modal').classList.add('hidden');
     }
 }
 
-function handleScanMatch(upc) {
+function handleScanMatch(scannedRaw) {
+    const scanned = normalizeUPC(scannedRaw);
+    
+    // 1. Search entire Planogram
+    const match = pogData.find(i => i.POG === currentPOG && normalizeUPC(i.UPC) === scanned);
+    
+    if (!match) {
+        alert("Item not found in current Planogram.");
+        return;
+    }
+
+    // 2. Check if in current Bay
+    const itemBay = parseInt(match.Bay);
+    if (itemBay !== currentBay) {
+        if(confirm(`Item found in Bay ${itemBay}. Switch bays?`)) {
+            loadBay(itemBay);
+            // Allow render time before highlighting
+            setTimeout(() => highlightItem(scanned), 500);
+        }
+        return;
+    }
+
+    highlightItem(scanned);
+}
+
+function highlightItem(upc) {
     const box = document.querySelector(`.product-box[data-upc="${upc}"]`);
     if(box) {
-        box.scrollIntoView({ behavior: "smooth", block: "center" });
-        box.style.border = "3px solid red";
-        box.style.zIndex = "100";
-        setTimeout(() => {
-            box.style.border = "1px solid #999";
-            box.style.zIndex = "2";
+        box.scrollIntoView({behavior: "smooth", block: "center"});
+        box.classList.add('highlight'); // Orange border
+        
+        // Auto-complete logic (Optional)
+        if(!box.classList.contains('completed')) {
             toggleComplete(upc, box);
-        }, 1500);
-    } else {
-        alert("UPC " + upc + " not found in this Bay.");
+        }
+
+        setTimeout(() => box.classList.remove('highlight'), 2000);
     }
 }
 
 function handleSearch(e) {
-    const term = e.target.value.toLowerCase();
-    const boxes = document.querySelectorAll('.product-box');
-    boxes.forEach(box => {
-        const upc = box.dataset.upc.toLowerCase();
-        const desc = box.dataset.desc.toLowerCase();
-        if(upc.includes(term) || desc.includes(term)) {
+    const term = normalizeUPC(e.target.value.toLowerCase().trim());
+    if(!term) {
+        document.querySelectorAll('.product-box').forEach(b => b.style.opacity = "1");
+        return;
+    }
+
+    // Search in current bay view
+    document.querySelectorAll('.product-box').forEach(box => {
+        const u = box.dataset.upc;
+        const d = box.dataset.desc;
+        if(u.includes(term) || d.includes(term)) {
             box.style.opacity = "1";
-            box.style.border = "2px solid blue";
+            box.style.border = "3px solid blue";
         } else {
             box.style.opacity = "0.1";
             box.style.border = "1px solid #999";
@@ -346,14 +369,15 @@ function handleSearch(e) {
 
 // --- PDF ---
 function openPDF() {
-    if (!currentPOG) return alert("Load a store first.");
-    const pdfFile = fileIndex.find(f => f.includes(currentPOG) && f.endsWith('.pdf'));
+    if(!currentPOG) return alert("Select a store first.");
+    // Find PDF file containing POG ID
+    const pdf = fileIndex.find(f => f.includes(currentPOG) && f.endsWith('.pdf'));
     
-    if(pdfFile) {
-        document.getElementById('pdf-frame').src = pdfFile;
+    if(pdf) {
+        document.getElementById('pdf-frame').src = pdf;
         document.getElementById('pdf-modal').classList.remove('hidden');
     } else {
-        alert("PDF not found for POG " + currentPOG);
+        alert("PDF not available for POG " + currentPOG);
     }
 }
 

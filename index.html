@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <!-- Zoom enabled for detailed board inspection -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HARPA Reset Tool</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Using a specific version of html5-qrcode for stability -->
+    <!-- QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
 </head>
@@ -15,8 +16,8 @@
     <div id="loading-overlay" class="modal-overlay">
         <div class="modal-card">
             <div class="spinner"></div>
-            <h3>Loading Data...</h3>
-            <p>Please wait.</p>
+            <h3>Loading Planogram Data...</h3>
+            <p id="loading-text">Connecting to repository...</p>
         </div>
     </div>
 
@@ -24,21 +25,21 @@
     <div id="store-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <h2>Select Store</h2>
-            <p>Enter Store Number to load Planogram:</p>
+            <p>Enter your Store Number to load the specific POG.</p>
             <input type="number" id="store-input" class="input-box" placeholder="Store # (e.g., 5)">
-            <button id="btn-load-store" class="btn-primary">Load Planogram</button>
-            <p id="error-msg" class="error hidden">Store not found.</p>
+            <button id="btn-load-store" class="btn-primary">Start Reset</button>
+            <p id="error-msg" class="error hidden">Store not found in mapping.</p>
         </div>
     </div>
 
-    <!-- PDF Modal -->
+    <!-- PDF Viewer Modal -->
     <div id="pdf-modal" class="modal-overlay hidden">
         <div class="modal-card pdf-card">
             <div class="modal-header">
-                <h3>Planogram PDF</h3>
-                <button onclick="closePDF()" class="btn-secondary">Close</button>
+                <h3>Planogram Reference</h3>
+                <button onclick="closePDF()" class="btn-secondary">Close X</button>
             </div>
-            <iframe id="pdf-frame"></iframe>
+            <iframe id="pdf-frame" src=""></iframe>
         </div>
     </div>
 
@@ -50,46 +51,44 @@
         </div>
     </div>
 
-    <!-- Header Area -->
+    <!-- App Header -->
     <header>
         <div class="top-bar">
-            <div class="store-info">
+            <div>
                 <h1 id="store-display">Store: --</h1>
                 <div id="pog-display" class="sub-text">POG: --</div>
             </div>
             <div class="actions">
                 <button onclick="openPDF()" class="btn-small">📄 PDF</button>
-                <button onclick="resetStore()" class="btn-small">🔄 Change</button>
+                <button onclick="resetStore()" class="btn-small">🔄 Store</button>
             </div>
         </div>
 
-        <!-- Bay Buttons -->
+        <!-- Bay Navigation -->
         <div id="bay-nav-container">
-            <div id="bay-nav" class="bay-scroller">
-                <!-- JS will insert buttons here -->
-            </div>
+            <div id="bay-nav" class="bay-scroller"></div>
         </div>
 
-        <!-- Progress Bar -->
+        <!-- Progress -->
         <div class="progress-container">
             <div id="progress-bar" class="progress-fill"></div>
         </div>
         <div class="progress-label">
-            <span id="progress-count">0/0 Complete</span>
+            <span id="progress-count">0/0 Items</span>
         </div>
     </header>
 
     <!-- Main Pegboard Canvas -->
     <main id="main-content">
         <div id="grid-view-container">
-            <!-- Products injected here -->
+            <!-- Javascript will draw the pegboard here -->
         </div>
     </main>
 
-    <!-- Footer Controls -->
+    <!-- Footer Search Bar -->
     <div class="footer-bar">
-        <input type="text" id="search-input" placeholder="Search UPC or Name...">
-        <button id="btn-scan-toggle" class="btn-scan">📷 Scan</button>
+        <input type="text" id="search-input" placeholder="Type UPC or Name...">
+        <button id="btn-scan-toggle" class="btn-scan">📷</button>
     </div>
 
     <script src="app.js"></script>

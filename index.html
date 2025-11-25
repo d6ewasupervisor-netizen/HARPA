@@ -10,7 +10,7 @@
 </head>
 <body>
 
-    <!-- Load/Error Overlay -->
+    <!-- Loading / Error Overlay -->
     <div id="loading-overlay" class="modal-overlay">
         <div class="modal-card center-content">
             <div class="spinner"></div>
@@ -23,17 +23,16 @@
     <div id="store-modal" class="modal-overlay hidden">
         <div class="modal-card center-content">
             <h2>Select Store</h2>
-            <p>Enter Store Number:</p>
             <input type="number" id="store-input" class="input-large" placeholder="Store #">
             <button id="btn-load-store" class="btn-primary full-width">Load Planogram</button>
-            <p id="error-msg" class="error hidden">Store not found.</p>
+            <p id="error-msg" class="error hidden">Store not found in mapping.</p>
         </div>
     </div>
 
     <!-- Scanner Overlay -->
     <div id="scanner-modal" class="modal-overlay hidden">
         <div class="scanner-wrapper">
-            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px;">CLOSE CAMERA ✕</button>
+            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px; background:#fff;">CLOSE CAMERA ✕</button>
             <div id="reader"></div>
             <div class="scanner-instruction">Point camera at UPC</div>
         </div>
@@ -52,35 +51,38 @@
 
     <!-- HEADER -->
     <header>
-        <div class="header-row">
-            <div class="store-info">
-                <h1 id="store-display">Store: --</h1>
-                <span id="pog-display" class="sub-text">POG: --</span>
-            </div>
-            <div class="header-actions">
-                <button onclick="openPDF()" class="btn-small">📄 PDF</button>
-                <button onclick="resetStore()" class="btn-small">🔄 Switch</button>
-            </div>
-        </div>
-
+        <!-- Top Row: Scanner & Search (Priority) -->
         <div class="tools-row">
-            <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN ITEM</button>
-            <div class="manual-search">
-                <input type="text" id="search-input" placeholder="Or type UPC...">
-                <button id="btn-manual-search" class="btn-go">GO</button>
+            <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN BARCODE</button>
+        </div>
+        <div class="search-row">
+            <input type="text" id="search-input" placeholder="Manual UPC Entry...">
+            <button id="btn-manual-search" class="btn-go">SEARCH</button>
+        </div>
+        
+        <!-- Debug / Info -->
+        <div id="scan-debug" class="debug-line">Ready</div>
+
+        <!-- Store Info & Nav -->
+        <div class="info-row">
+            <div>
+                <span id="store-display" style="font-weight:bold; color:#005EB8;">Store: --</span>
+                <span id="pog-display" style="font-size:0.75rem; color:#666; margin-left:5px;"></span>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button onclick="openPDF()" class="btn-xs">PDF</button>
+                <button onclick="resetStore()" class="btn-xs">Switch</button>
             </div>
         </div>
 
-        <div class="info-row">
-            <div id="scan-debug">Ready</div>
-        </div>
-
+        <!-- Bay Navigation -->
         <div class="nav-bar">
             <button id="prev-bay" class="nav-arrow">◀</button>
             <span id="bay-indicator">Bay 1</span>
             <button id="next-bay" class="nav-arrow">▶</button>
         </div>
 
+        <!-- Progress -->
         <div class="progress-track">
             <div id="progress-fill" class="progress-fill"></div>
         </div>

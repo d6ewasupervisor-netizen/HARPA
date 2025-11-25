@@ -10,35 +10,35 @@
 </head>
 <body>
 
-    <!-- Loading / Error Overlay -->
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="modal-overlay">
         <div class="modal-card center-content">
             <div class="spinner"></div>
-            <h3 id="loading-title">Loading HARPA...</h3>
-            <p id="loading-text">Fetching data files...</p>
+            <h3 id="loading-title">Loading...</h3>
+            <p id="loading-text">Connecting to Store Data</p>
         </div>
     </div>
 
-    <!-- Store Selection Modal -->
+    <!-- Store Select -->
     <div id="store-modal" class="modal-overlay hidden">
         <div class="modal-card center-content">
             <h2>Select Store</h2>
-            <input type="number" id="store-input" class="input-large" placeholder="Store #">
-            <button id="btn-load-store" class="btn-primary full-width">Load Planogram</button>
-            <p id="error-msg" class="error hidden">Store not found in mapping.</p>
+            <input type="number" id="store-input" class="input-large" placeholder="Enter Store #">
+            <button id="btn-load-store" class="btn-primary full-width">Load POG</button>
+            <p id="error-msg" class="error hidden">Store Not Found</p>
         </div>
     </div>
 
-    <!-- Scanner Overlay -->
+    <!-- Scanner -->
     <div id="scanner-modal" class="modal-overlay hidden">
         <div class="scanner-wrapper">
-            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px; background:#fff;">CLOSE CAMERA ✕</button>
+            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px;">CLOSE CAMERA ✕</button>
             <div id="reader"></div>
-            <div class="scanner-instruction">Point camera at UPC</div>
+            <div class="scanner-instruction">Scanning...</div>
         </div>
     </div>
 
-    <!-- PDF Modal -->
+    <!-- PDF View -->
     <div id="pdf-modal" class="modal-overlay hidden">
         <div class="modal-card pdf-card">
             <div class="modal-header">
@@ -51,52 +51,42 @@
 
     <!-- HEADER -->
     <header>
-        <!-- Top Row: Scanner & Search (Priority) -->
+        <div class="header-row">
+            <div class="store-info">
+                <h1 id="store-display">Store: --</h1>
+                <span id="pog-display" class="sub-text">--</span>
+            </div>
+            <div class="header-actions">
+                <button onclick="openPDF()" class="btn-small">PDF</button>
+                <button onclick="resetStore()" class="btn-small">Switch</button>
+            </div>
+        </div>
+
         <div class="tools-row">
             <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN BARCODE</button>
-        </div>
-        <div class="search-row">
-            <input type="text" id="search-input" placeholder="Manual UPC Entry...">
-            <button id="btn-manual-search" class="btn-go">SEARCH</button>
+            <div class="manual-search">
+                <input type="text" id="search-input" placeholder="UPC...">
+                <button id="btn-manual-search" class="btn-go">GO</button>
+            </div>
         </div>
         
-        <!-- Debug / Info -->
         <div id="scan-debug" class="debug-line">Ready</div>
 
-        <!-- Store Info & Nav -->
-        <div class="info-row">
-            <div>
-                <span id="store-display" style="font-weight:bold; color:#005EB8;">Store: --</span>
-                <span id="pog-display" style="font-size:0.75rem; color:#666; margin-left:5px;"></span>
-            </div>
-            <div style="display:flex; gap:5px;">
-                <button onclick="openPDF()" class="btn-xs">PDF</button>
-                <button onclick="resetStore()" class="btn-xs">Switch</button>
-            </div>
-        </div>
-
-        <!-- Bay Navigation -->
         <div class="nav-bar">
             <button id="prev-bay" class="nav-arrow">◀</button>
             <span id="bay-indicator">Bay 1</span>
             <button id="next-bay" class="nav-arrow">▶</button>
         </div>
 
-        <!-- Progress -->
         <div class="progress-track">
             <div id="progress-fill" class="progress-fill"></div>
         </div>
-        <div class="progress-text">
-            <span id="progress-count">0/0 Complete</span>
-        </div>
     </header>
 
-    <!-- MAIN SCROLLABLE AREA -->
+    <!-- MAIN CONTENT -->
     <main id="main-scroll-area">
-        <!-- The Grid Container -->
-        <div id="pegboard-container">
-            <!-- Grid and Products are injected here -->
-        </div>
+        <!-- The pegboard is drawn here -->
+        <div id="pegboard-container"></div>
     </main>
 
     <script src="app.js"></script>

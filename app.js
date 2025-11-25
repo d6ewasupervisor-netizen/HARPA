@@ -1,12 +1,18 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
+// Base URL for fetching files
 const REPO_BASE = window.location.href.substring(0, window.location.href.lastIndexOf('/')) + "/";
-// Board Dimensions (Holes) - FIXED
-const BOARD_W_HOLES = 46; 
-const BOARD_H_HOLES = 64;
 
-// STATE
+// PHYSICAL DIMENSIONS (HOLES)
+// The board is exactly 46 holes wide x 64 holes high
+const BOARD_WIDTH_HOLES = 46; 
+const BOARD_HEIGHT_HOLES = 64;
+
+// ==========================================
+// GLOBAL STATE
+// ==========================================
+let PPI = 16; // Pixels Per Inch (Will be auto-calculated)
 let fileIndex = [];
 let pogData = [];
 let storeMap = [];
@@ -15,11 +21,10 @@ let currentPOG = null;
 let currentBay = 1;
 let allBays = [];
 let html5QrCode = null;
-let PPI = 10; // Will be calculated
 let completedItems = new Set(JSON.parse(localStorage.getItem('harpa_complete') || "[]"));
 
 // ==========================================
-// INIT
+// INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -30,16 +35,25 @@ async function init() {
     try {
         await loadCSVData();
         document.getElementById('loading-overlay').classList.add('hidden');
+
         const savedStore = localStorage.getItem('harpa_store');
-        if (savedStore) loadStoreLogic(savedStore);
-        else document.getElementById('store-modal').classList.remove('hidden');
+        if (savedStore) {
+            loadStoreLogic(savedStore);
+        } else {
+            document.getElementById('store-modal').classList.remove('hidden');
+        }
     } catch (error) {
-        alert("Data Error: " + error.message);
+        alert("Error: " + error.message);
     }
 
-    document.getElementById('btn-load-store').onclick = () => loadStoreLogic(document.getElementById('store-input').value.trim());
+    // Bind Buttons
+    document.getElementById('btn-load-store').onclick = () => {
+        loadStoreLogic(document.getElementById('store-input').value.trim());
+    };
     document.getElementById('btn-scan-toggle').onclick = startScanner;
-    document.getElementById('btn-manual-search').onclick = () => handleSearchOrScan(document.getElementById('search-input').value.trim());
+    document.getElementById('btn-manual-search').onclick = () => {
+        handleSearchOrScan(document.getElementById('search-input').value.trim());
+    };
     document.getElementById('prev-bay').onclick = () => changeBay(-1);
     document.getElementById('next-bay').onclick = () => changeBay(1);
 }
@@ -48,14 +62,14 @@ async function init() {
 // DATA LOADING
 // ==========================================
 async function loadCSVData() {
-    const ts = new Date().getTime();
+    const ts = new Date().getTime(); // Cache busting
     const [filesReq, pogReq, mapReq] = await Promise.all([
         fetch(`githubfiles.csv?t=${ts}`),
         fetch(`allplanogramdata.csv?t=${ts}`),
         fetch(`Store_POG_Mapping.csv?t=${ts}`)
     ]);
 
-    if (!filesReq.ok || !pogReq.ok || !mapReq.ok) throw new Error("Failed to fetch CSVs");
+    if (!filesReq.ok || !pogReq.ok || !mapReq.ok) throw new Error("Failed to fetch data files.");
 
     const filesText = await filesReq.text();
     const pogText = await pogReq.text();
@@ -64,7 +78,7 @@ async function loadCSVData() {
     fileIndex = filesText.split('\n').map(l => l.trim());
     storeMap = parseCSV(mapText);
     
-    // Parse and Clean Data
+    // Pre-normalize UPCs in memory
     const rawPOG = parseCSV(pogText);
     pogData = rawPOG.map(item => {
         item.CleanUPC = normalizeUPC(item.UPC);
@@ -90,13 +104,12 @@ function parseCSV(text) {
 
 function normalizeUPC(upc) {
     if (!upc) return "";
-    // 1. Remove whitespace
-    // 2. Remove all leading zeros
+    // Remove whitespace and ALL leading zeros
     return upc.toString().trim().replace(/^0+/, '');
 }
 
 // ==========================================
-// STORE & BAY LOGIC
+// STORE LOGIC
 // ==========================================
 function loadStoreLogic(storeNum) {
     const mapping = storeMap.find(s => s.Store === storeNum);
@@ -108,14 +121,15 @@ function loadStoreLogic(storeNum) {
     currentPOG = mapping.POG;
     localStorage.setItem('harpa_store', storeNum);
 
+    // Find bays for this POG
     const items = pogData.filter(i => i.POG === currentPOG);
     allBays = [...new Set(items.map(i => parseInt(i.Bay)))].sort((a,b) => a-b);
-
+    
     if (allBays.length === 0) return alert("POG " + currentPOG + " has no items.");
 
     document.getElementById('store-modal').classList.add('hidden');
     document.getElementById('store-display').innerText = `Store #${storeNum}`;
-    document.getElementById('pog-display').innerText = currentPOG;
+    document.getElementById('pog-display').innerText = `POG: ${currentPOG}`;
     document.getElementById('error-msg').classList.add('hidden');
 
     loadBay(allBays[0]);
@@ -140,77 +154,75 @@ function loadBay(bayNum) {
     document.getElementById('bay-indicator').innerText = `Bay ${bayNum} of ${allBays.length}`;
     document.getElementById('prev-bay').style.opacity = (bayNum === allBays[0]) ? "0.3" : "1";
     document.getElementById('next-bay').style.opacity = (bayNum === allBays[allBays.length - 1]) ? "0.3" : "1";
-    renderBoard(bayNum);
+    renderPegboard(bayNum);
 }
 
 // ==========================================
-// BOARD RENDERING (The Frog)
+// RENDERER: THE FROG BOARD
 // ==========================================
-function renderBoard(bayNum) {
+function renderPegboard(bayNum) {
     const container = document.getElementById('pegboard-container');
     container.innerHTML = '';
 
-    // 1. Calculate PPI to fit screen Width
-    // Get container width available
+    // 1. CALCULATE SCALE (Fit to Screen Width)
     const screenWidth = document.getElementById('main-scroll-area').clientWidth;
-    // We need 46 holes to fit in this width.
-    // Add a small margin buffer (e.g. 20px)
-    PPI = (screenWidth - 20) / BOARD_W_HOLES;
+    // We need 46 holes to fit in width. Add 10px padding.
+    PPI = (screenWidth - 20) / BOARD_WIDTH_HOLES;
     
-    const wPx = BOARD_W_HOLES * PPI;
+    const wPx = BOARD_WIDTH_HOLES * PPI;
     const hPx = BOARD_HEIGHT_HOLES * PPI;
-
+    
     container.style.width = `${wPx}px`;
     container.style.height = `${hPx}px`;
 
-    // 2. Draw Peg Holes (High Contrast CSS)
-    // Using 20% dark gray dot
-    container.style.backgroundSize = `${PPI}px ${PPI}px`;
-    container.style.backgroundImage = `radial-gradient(circle, #111 20%, transparent 21%)`;
+    // 2. Visual Grid (Dots)
+    const bg = document.createElement('div');
+    bg.className = 'peg-hole-pattern';
+    bg.style.backgroundSize = `${PPI}px ${PPI}px`;
+    // Draw black dot in center of each grid cell
+    bg.style.backgroundImage = `radial-gradient(circle, #000 15%, transparent 16%)`;
+    container.appendChild(bg);
 
-    // 3. Place Items
+    // 3. Filter Items
     const items = pogData.filter(i => i.POG === currentPOG && parseInt(i.Bay) === bayNum);
     let complete = 0;
 
     items.forEach(item => {
-        // Format: R02 C03
         const { r, c } = getCoords(item.Peg);
         
-        // Dimensions: remove " in" and convert to pixels
-        const hVal = parseFloat(item.Height.replace(' in', '')) || 6;
-        const wVal = parseFloat(item.Width.replace(' in', '')) || 3;
-        const hPxItem = hVal * PPI;
-        const wPxItem = wVal * PPI;
+        // Convert Dimensions
+        const h = parseFloat(item.Height.replace(' in','')) || 6;
+        const w = parseFloat(item.Width.replace(' in','')) || 3;
+        const hPxItem = h * PPI;
+        const wPxItem = w * PPI;
 
-        // --- POSITIONING (Frog Logic) ---
-        // Grid (1,1) is top-left.
-        // Hole (C, R) is the LEFT leg.
-        // X of Left Leg Hole Center = (C - 0.5) * PPI
-        // Y of Row Center = (R - 0.5) * PPI
+        // --- FROG POSITIONING ---
+        // (1,1) is top-left.
+        // Hole C X = (C-1)*PPI
+        // Hole R Y = (R-1)*PPI
         
-        // NOTE: standard grid 0-based for math:
-        // Hole 1 is at 0*PPI to 1*PPI. Center is 0.5*PPI.
-        
-        const holeCenterX = (c - 0.5) * PPI;
-        const holeCenterY = (r - 0.5) * PPI;
+        const frogX = (c - 1) * PPI;
+        const frogY = (r - 1) * PPI;
 
-        // Draw Red Dot (Left Leg)
+        // 1. Draw RED DOT (The Left Leg of Frog)
         const dot = document.createElement('div');
         dot.className = 'frog-dot';
-        dot.style.left = `${holeCenterX}px`;
-        dot.style.top = `${holeCenterY}px`;
+        // Add half PPI to center visually in the hole space
+        dot.style.left = `${frogX + (PPI/2)}px`;
+        dot.style.top = `${frogY + (PPI/2)}px`;
         container.appendChild(dot);
 
-        // Draw Product
-        // Frog Spans 2 holes (C and C+1).
-        // Center of product is exactly between Hole C and Hole C+1.
-        // Center X = holeCenterX + (0.5 inches * PPI)
-        const productCenterX = holeCenterX + (0.5 * PPI);
+        // 2. Draw PRODUCT BOX
+        // Frog spans 2 holes (C and C+1). Product centered between them.
+        // Center X = frogX + (0.5 inches * PPI) + (0.5 inches * PPI) -> One full PPI shift to the right center?
+        // No, Frog is Left Leg. Center of product is between Left Leg (C) and Right Leg (C+1).
+        // Distance is 1 inch (PPI). Midpoint is +0.5*PPI relative to Left Hole Center.
         
-        // Product Top = holeCenterY (Hanging from that row)
-        // Product Left = productCenterX - (Width / 2)
+        const leftHoleCenterX = frogX + (PPI/2);
+        const productCenterX = leftHoleCenterX + (PPI/2); // Half inch to the right
+        
         const boxLeft = productCenterX - (wPxItem / 2);
-        const boxTop = holeCenterY + (0.5 * PPI); // Hang slightly below hole center
+        const boxTop = frogY + (PPI/2); // Hangs from row center
 
         const box = document.createElement('div');
         box.className = 'product-box';
@@ -218,6 +230,7 @@ function renderBoard(bayNum) {
         box.style.height = `${hPxItem}px`;
         box.style.left = `${boxLeft}px`;
         box.style.top = `${boxTop}px`;
+        
         box.dataset.upc = item.CleanUPC;
 
         if (completedItems.has(item.CleanUPC)) {
@@ -225,7 +238,7 @@ function renderBoard(bayNum) {
             complete++;
         }
 
-        // Image (Raw UPC match)
+        // Image Logic
         const imgName = fileIndex.find(f => f.startsWith(item.UPC));
         if (imgName) {
             const img = document.createElement('img');
@@ -233,15 +246,25 @@ function renderBoard(bayNum) {
             img.loading = "lazy";
             box.appendChild(img);
         } else {
-            box.innerHTML = `<div style="font-size:${PPI*0.4}px; text-align:center; overflow:hidden; padding:1px;">${item.UPC}</div>`;
+            // Fallback text if no image found
+            box.innerText = item.UPC;
+            box.style.fontSize = `${PPI*0.4}px`;
+            box.style.textAlign = "center";
+            box.style.display = "flex";
+            box.style.alignItems = "center";
+            box.style.justifyContent = "center";
+            box.style.overflow = "hidden";
+            box.style.wordBreak = "break-all";
         }
 
         box.onclick = () => toggleComplete(item.CleanUPC, box);
         container.appendChild(box);
     });
 
+    // Progress
     const pct = items.length ? Math.round((complete/items.length)*100) : 0;
     document.getElementById('progress-fill').style.width = `${pct}%`;
+    document.getElementById('progress-count').innerText = `${complete} / ${items.length}`;
 }
 
 function getCoords(str) {
@@ -252,7 +275,7 @@ function getCoords(str) {
 }
 
 // ==========================================
-// UTILS
+// COMPLETION LOGIC
 // ==========================================
 function toggleComplete(upc, el) {
     if (completedItems.has(upc)) {
@@ -263,6 +286,13 @@ function toggleComplete(upc, el) {
         el.classList.add('completed');
     }
     localStorage.setItem('harpa_complete', JSON.stringify([...completedItems]));
+    
+    // Update stats simply by counting DOM elements for performance
+    const allBoxes = document.querySelectorAll('.product-box');
+    const completeBoxes = document.querySelectorAll('.product-box.completed');
+    const pct = Math.round((completeBoxes.length / allBoxes.length) * 100);
+    document.getElementById('progress-fill').style.width = `${pct}%`;
+    document.getElementById('progress-count').innerText = `${completeBoxes.length} / ${allBoxes.length}`;
 }
 
 function loadProgress() {
@@ -279,7 +309,10 @@ function startScanner() {
     html5QrCode.start(
         { facingMode: "environment" }, 
         { fps: 10, qrbox: 250 },
-        (decodedText) => handleSearchOrScan(decodedText),
+        (decodedText) => {
+            // Do NOT close scanner automatically
+            handleSearchOrScan(decodedText);
+        },
         () => {}
     ).catch(err => {
         alert("Camera Error: " + err);
@@ -290,36 +323,40 @@ function startScanner() {
 function stopScanner() {
     if(html5QrCode) {
         html5QrCode.stop().then(() => {
-            document.getElementById('scanner-modal').classList.add('hidden');
             html5QrCode.clear();
-        }).catch(() => document.getElementById('scanner-modal').classList.add('hidden'));
+            document.getElementById('scanner-modal').classList.add('hidden');
+        }).catch(() => {
+            document.getElementById('scanner-modal').classList.add('hidden');
+        });
     } else {
         document.getElementById('scanner-modal').classList.add('hidden');
     }
 }
 
-function handleSearchOrScan(input) {
-    if(!input) return;
-    const clean = normalizeUPC(input);
-    document.getElementById('scan-debug').innerHTML = `Scanned: <b>${input}</b> | ID: <b>${clean}</b>`;
+function handleSearchOrScan(inputVal) {
+    if(!inputVal) return;
+    
+    const clean = normalizeUPC(inputVal);
+    document.getElementById('scan-debug').innerHTML = `Scan: <b>${inputVal}</b> | Clean: <b>${clean}</b>`;
 
-    // 1. Search GLOBAL POG
-    // Check exact match OR match with leading zeros stripped from input
+    // 1. Search GLOBAL
     const match = pogData.find(i => i.POG === currentPOG && i.CleanUPC === clean);
 
-    if (!match) {
+    if(!match) {
         document.getElementById('scan-debug').style.color = "red";
-        document.getElementById('scan-debug').innerHTML += " - NOT FOUND";
+        document.getElementById('scan-debug').innerHTML += " [Not Found]";
         return;
     }
 
     document.getElementById('scan-debug').style.color = "green";
-    
-    // 2. Check Bay
+    document.getElementById('scan-debug').innerHTML += " [Found]";
+
+    // 2. Switch Bay if needed
     const bay = parseInt(match.Bay);
-    if (bay !== currentBay) {
+    if(bay !== currentBay) {
         loadBay(bay);
-        setTimeout(() => highlightItem(clean), 500); // wait for render
+        // Delay to allow DOM render
+        setTimeout(() => highlightItem(clean), 400);
     } else {
         highlightItem(clean);
     }
@@ -330,7 +367,11 @@ function highlightItem(upc) {
     if(box) {
         box.scrollIntoView({behavior:"smooth", block:"center"});
         box.classList.add('highlight');
-        if(!box.classList.contains('completed')) toggleComplete(upc, box);
+        
+        if(!box.classList.contains('completed')) {
+            toggleComplete(upc, box);
+        }
+        
         setTimeout(() => box.classList.remove('highlight'), 2000);
     }
 }
@@ -339,19 +380,16 @@ function highlightItem(upc) {
 // SWIPE & PDF
 // ==========================================
 function setupSwipe() {
-    let xDown = null;
+    let startX = 0;
     const el = document.getElementById('main-scroll-area');
-    el.addEventListener('touchstart', evt => xDown = evt.touches[0].clientX, {passive: true});
-    el.addEventListener('touchmove', evt => {
-        if (!xDown) return;
-        let xUp = evt.touches[0].clientX;
-        let xDiff = xDown - xUp;
-        if (Math.abs(xDiff) > 100) {
-            if (xDiff > 0) changeBay(1); // Left Swipe -> Next
-            else changeBay(-1);
-            xDown = null;
+    el.addEventListener('touchstart', e => startX = e.changedTouches[0].screenX, {passive:true});
+    el.addEventListener('touchend', e => {
+        const diff = e.changedTouches[0].screenX - startX;
+        if(Math.abs(diff) > 60) {
+            if(diff > 0) changeBay(-1);
+            else changeBay(1);
         }
-    }, {passive: true});
+    }, {passive:true});
 }
 
 function openPDF() {

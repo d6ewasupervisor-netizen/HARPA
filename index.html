@@ -14,31 +14,31 @@
     <div id="loading-overlay" class="modal-overlay">
         <div class="modal-card center-content">
             <div class="spinner"></div>
-            <h3 id="loading-title">Loading...</h3>
-            <p id="loading-text">Connecting to Store Data</p>
+            <h3>Loading HARPA...</h3>
+            <p id="loading-text">Connecting to Database</p>
         </div>
     </div>
 
-    <!-- Store Select -->
+    <!-- Store Selection Modal -->
     <div id="store-modal" class="modal-overlay hidden">
         <div class="modal-card center-content">
             <h2>Select Store</h2>
-            <input type="number" id="store-input" class="input-large" placeholder="Enter Store #">
-            <button id="btn-load-store" class="btn-primary full-width">Load POG</button>
-            <p id="error-msg" class="error hidden">Store Not Found</p>
+            <input type="number" id="store-input" class="input-large" placeholder="Store #">
+            <button id="btn-load-store" class="btn-primary full-width">Load Planogram</button>
+            <p id="error-msg" class="error hidden">Store not found.</p>
         </div>
     </div>
 
-    <!-- Scanner -->
+    <!-- Scanner Modal -->
     <div id="scanner-modal" class="modal-overlay hidden">
         <div class="scanner-wrapper">
-            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px;">CLOSE CAMERA ✕</button>
+            <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px; background:white;">CLOSE CAMERA ✕</button>
             <div id="reader"></div>
-            <div class="scanner-instruction">Scanning...</div>
+            <div class="scanner-instruction">Point at UPC (e.g., 41457...)</div>
         </div>
     </div>
 
-    <!-- PDF View -->
+    <!-- PDF Modal -->
     <div id="pdf-modal" class="modal-overlay hidden">
         <div class="modal-card pdf-card">
             <div class="modal-header">
@@ -49,44 +49,52 @@
         </div>
     </div>
 
-    <!-- HEADER -->
+    <!-- APP HEADER -->
     <header>
         <div class="header-row">
             <div class="store-info">
                 <h1 id="store-display">Store: --</h1>
-                <span id="pog-display" class="sub-text">--</span>
+                <span id="pog-display" class="sub-text">POG: --</span>
             </div>
             <div class="header-actions">
-                <button onclick="openPDF()" class="btn-small">PDF</button>
-                <button onclick="resetStore()" class="btn-small">Switch</button>
+                <button onclick="openPDF()" class="btn-small">📄 PDF</button>
+                <button onclick="resetStore()" class="btn-small">🔄 Switch</button>
             </div>
         </div>
 
+        <!-- Controls -->
         <div class="tools-row">
             <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN BARCODE</button>
             <div class="manual-search">
-                <input type="text" id="search-input" placeholder="UPC...">
+                <input type="text" id="search-input" placeholder="Type UPC...">
                 <button id="btn-manual-search" class="btn-go">GO</button>
             </div>
         </div>
-        
+
+        <!-- Debug Line -->
         <div id="scan-debug" class="debug-line">Ready</div>
 
+        <!-- Navigation -->
         <div class="nav-bar">
             <button id="prev-bay" class="nav-arrow">◀</button>
             <span id="bay-indicator">Bay 1</span>
             <button id="next-bay" class="nav-arrow">▶</button>
         </div>
 
+        <!-- Progress -->
         <div class="progress-track">
             <div id="progress-fill" class="progress-fill"></div>
         </div>
+        <div class="progress-text">
+            <span id="progress-count">0/0 Complete</span>
+        </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN PEGBOARD AREA -->
     <main id="main-scroll-area">
-        <!-- The pegboard is drawn here -->
-        <div id="pegboard-container"></div>
+        <div id="pegboard-container">
+            <!-- JS injects holes and products here -->
+        </div>
     </main>
 
     <script src="app.js"></script>

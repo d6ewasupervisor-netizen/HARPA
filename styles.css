@@ -1,129 +1,92 @@
 :root {
     --primary: #005EB8;
     --success: #43A047;
-    --bg-gray: #333; 
-    --board-bg: #ffffff;
-    --hole-color: #000000;
+    --bg-gray: #333;
+    --board-bg: #e6e6e6; 
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 body { height: 100vh; display: flex; flex-direction: column; background: var(--bg-gray); overflow: hidden; }
 
-/* --- HEADER --- */
-header {
-    background: #f4f4f9; padding: 8px 10px; 
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
-    z-index: 50; flex-shrink: 0;
-    border-bottom: 1px solid #ccc;
-}
+/* --- Header --- */
+header { background: white; padding: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 50; flex-shrink: 0; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+h1 { font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 800; }
+.sub-text { font-size: 0.7rem; color: #666; }
 
-.tools-row { margin-bottom: 8px; }
+.btn-small { padding: 4px 8px; font-size: 0.75rem; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; }
+.btn-secondary { padding: 8px 12px; background: #fff; border: 1px solid #333; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+/* Search/Scan */
+.tools-row { display: flex; gap: 6px; margin-bottom: 6px; }
 .btn-scan-header {
-    width: 100%; background: var(--primary); color: white; border: none; border-radius: 4px;
-    font-weight: bold; font-size: 1.1rem; padding: 12px; cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    flex: 2; background: var(--primary); color: white; border: none; border-radius: 4px;
+    font-weight: bold; font-size: 0.9rem; padding: 10px; cursor: pointer;
 }
+.manual-search { flex: 1; display: flex; gap: 4px; }
+.manual-search input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; width: 100%;}
+.btn-go { background: #444; color: white; border: none; padding: 0 10px; border-radius: 4px; font-weight: bold; }
 
-.search-row { display: flex; gap: 5px; margin-bottom: 6px; }
-#search-input { flex: 1; padding: 10px; border: 1px solid #999; border-radius: 4px; font-size: 1rem; }
-.btn-go { background: #444; color: white; border: none; padding: 0 15px; border-radius: 4px; font-weight: bold; font-size: 0.9rem;}
-
-.debug-line { font-size: 0.75rem; color: #444; text-align: center; margin-bottom: 6px; font-family: monospace; background: #e0e0e0; padding: 2px; border-radius: 3px;}
-
-.info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.btn-xs { padding: 4px 8px; font-size: 0.75rem; border: 1px solid #999; background: #fff; border-radius: 3px; cursor: pointer; }
+.debug-line { font-size: 0.7rem; color: #ccc; background: #222; text-align: center; margin-bottom: 4px; font-family: monospace; padding: 2px; }
 
 /* Navigation */
-.nav-bar { 
-    display: flex; justify-content: space-between; align-items: center; 
-    background: #ddd; padding: 4px; border-radius: 4px; margin-bottom: 4px; 
-}
-.nav-arrow { width: 50px; height: 35px; background: white; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 1.4rem; cursor: pointer; display:flex; align-items:center; justify-content:center;}
-#bay-indicator { font-weight: 800; color: #222; font-size: 1.1rem;}
+.nav-bar { display: flex; justify-content: space-between; align-items: center; background: #eee; padding: 4px; border-radius: 4px; margin-bottom: 4px; }
+.nav-arrow { width: 50px; height: 35px; background: white; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 1.4rem; cursor: pointer; }
+#bay-indicator { font-weight: 800; color: #222; }
 
 /* Progress */
 .progress-track { height: 8px; background: #bbb; border-radius: 4px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--success); width: 0%; transition: 0.3s; }
-.progress-text { text-align: right; font-size: 0.75rem; color: #666; margin-top: 2px; }
 
-/* --- MAIN PEGBOARD --- */
+/* --- PEGBOARD --- */
 main { 
     flex: 1; 
-    overflow: auto; /* Scrolls in all directions */
+    overflow-y: auto; 
     position: relative; 
-    background: #222; /* Dark surround */
-    display: flex;
-    /* Center horizontally if smaller than screen, otherwise scroll */
-    justify-content: center; 
+    background: #222; 
+    /* Important: Block display prevents collapsing */
+    display: block; 
 }
 
 #pegboard-container {
     position: relative;
+    margin: 10px auto; /* Center it */
     background-color: var(--board-bg);
-    /* High contrast border to verify it loaded */
-    border: 2px solid #fff; 
-    box-shadow: 0 0 30px black;
-    margin: 10px;
-    transform-origin: top left;
-}
-
-/* The Dot Pattern (Generated via CSS Gradients) */
-.peg-hole-pattern {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    opacity: 0.8;
-    pointer-events: none;
+    box-shadow: 0 0 20px black;
+    /* The grid pattern will be applied by JS */
 }
 
 /* Product Box */
 .product-box {
     position: absolute;
     background: white;
-    border: 1px solid #555;
+    border: 1px solid #888;
     display: flex; justify-content: center; align-items: flex-start;
-    overflow: hidden; cursor: pointer; z-index: 10;
+    overflow: hidden; cursor: pointer; z-index: 5;
     border-radius: 2px;
-    box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
+    box-shadow: 1px 2px 3px rgba(0,0,0,0.4);
 }
 .product-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.product-box.completed { 
-    opacity: 0.4; 
-    filter: grayscale(100%); 
-    border: 3px solid var(--success); 
-    background: #c8e6c9; 
-}
-.product-box.highlight {
-    border: 4px solid #ff00ea;
-    z-index: 50;
-    box-shadow: 0 0 30px #ff00ea;
-    transform: scale(1.15);
-    opacity: 1 !important;
-    background: white;
-}
+.product-box.completed { opacity: 0.4; filter: grayscale(100%); border: 2px solid var(--success); background: #c8e6c9; }
+.product-box.highlight { border: 3px solid #ff00ea; z-index: 20; box-shadow: 0 0 20px #ff00ea; transform: scale(1.1); opacity: 1 !important; }
 
-/* The Frog (Red Dot Indicator) */
+/* The Frog Dot */
 .frog-dot {
     position: absolute;
-    width: 10px; height: 10px;
+    width: 6px; height: 6px;
     background-color: red;
-    border: 1px solid white;
     border-radius: 50%;
-    z-index: 5;
+    z-index: 6;
     pointer-events: none;
     transform: translate(-50%, -50%);
 }
 
 /* --- MODALS --- */
-.modal-overlay {
-    position: fixed; top:0; left:0; right:0; bottom:0;
-    background: rgba(0,0,0,0.95); z-index: 2000;
-    display: flex; justify-content: center; align-items: center;
-}
+.modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .hidden { display: none !important; }
-.modal-card { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; }
+.modal-card { background: white; padding: 20px; border-radius: 8px; width: 85%; max-width: 350px; text-align: center; }
 .center-content { display: flex; flex-direction: column; align-items: center; }
-
 .input-large { width: 100%; padding: 15px; font-size: 1.4rem; text-align: center; margin: 15px 0; border: 2px solid #ccc; border-radius: 4px; }
 .full-width { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; font-weight: bold; font-size: 1.1rem; border-radius: 4px; cursor: pointer;}
 .error { color: red; margin-top: 10px; font-weight: bold; }

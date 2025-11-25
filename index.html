@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport allows zooming (user-scalable=yes) -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>HARPA Reset Tool</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -11,12 +10,12 @@
 </head>
 <body>
 
-    <!-- Loading Screen -->
+    <!-- Load/Error Overlay -->
     <div id="loading-overlay" class="modal-overlay">
         <div class="modal-card center-content">
             <div class="spinner"></div>
-            <h3>Loading HARPA...</h3>
-            <p>Fetching Planograms & Images</p>
+            <h3 id="loading-title">Loading HARPA...</h3>
+            <p id="loading-text">Fetching data files...</p>
         </div>
     </div>
 
@@ -24,8 +23,8 @@
     <div id="store-modal" class="modal-overlay hidden">
         <div class="modal-card center-content">
             <h2>Select Store</h2>
-            <p>Enter your Store Number:</p>
-            <input type="number" id="store-input" class="input-large" placeholder="Store # (e.g. 5)">
+            <p>Enter Store Number:</p>
+            <input type="number" id="store-input" class="input-large" placeholder="Store #">
             <button id="btn-load-store" class="btn-primary full-width">Load Planogram</button>
             <p id="error-msg" class="error hidden">Store not found.</p>
         </div>
@@ -36,7 +35,7 @@
         <div class="scanner-wrapper">
             <button onclick="stopScanner()" class="btn-secondary full-width" style="margin-bottom:10px;">CLOSE CAMERA ✕</button>
             <div id="reader"></div>
-            <div style="color:white; text-align:center; margin-top:10px;">Point camera at UPC</div>
+            <div class="scanner-instruction">Point camera at UPC</div>
         </div>
     </div>
 
@@ -51,40 +50,37 @@
         </div>
     </div>
 
-    <!-- APP HEADER -->
+    <!-- HEADER -->
     <header>
-        <!-- Row 1: Info & Global Actions -->
-        <div class="header-top">
+        <div class="header-row">
             <div class="store-info">
                 <h1 id="store-display">Store: --</h1>
-                <div id="pog-display" class="sub-text">POG: --</div>
+                <span id="pog-display" class="sub-text">POG: --</span>
             </div>
-            <div class="header-buttons">
+            <div class="header-actions">
                 <button onclick="openPDF()" class="btn-small">📄 PDF</button>
                 <button onclick="resetStore()" class="btn-small">🔄 Switch</button>
             </div>
         </div>
 
-        <!-- Row 2: Scanner & Search -->
-        <div class="search-container">
-            <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN BARCODE</button>
+        <div class="tools-row">
+            <button id="btn-scan-toggle" class="btn-scan-header">📷 SCAN ITEM</button>
             <div class="manual-search">
                 <input type="text" id="search-input" placeholder="Or type UPC...">
                 <button id="btn-manual-search" class="btn-go">GO</button>
             </div>
         </div>
 
-        <!-- Debug Info -->
-        <div id="scan-debug" class="debug-line">Ready to scan...</div>
+        <div class="info-row">
+            <div id="scan-debug">Ready</div>
+        </div>
 
-        <!-- Row 3: Navigation -->
         <div class="nav-bar">
             <button id="prev-bay" class="nav-arrow">◀</button>
             <span id="bay-indicator">Bay 1</span>
             <button id="next-bay" class="nav-arrow">▶</button>
         </div>
 
-        <!-- Row 4: Progress -->
         <div class="progress-track">
             <div id="progress-fill" class="progress-fill"></div>
         </div>
@@ -93,11 +89,11 @@
         </div>
     </header>
 
-    <!-- MAIN CANVAS (Pegboard) -->
+    <!-- MAIN SCROLLABLE AREA -->
     <main id="main-scroll-area">
-        <!-- The Grid -->
+        <!-- The Grid Container -->
         <div id="pegboard-container">
-            <!-- JS Injects Grid & Products Here -->
+            <!-- Grid and Products are injected here -->
         </div>
     </main>
 
